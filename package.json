@@ -1,0 +1,19 @@
+{
+  "name": "ls-procr",
+  "version": "1.0.0",
+  "description": "Audio album builder for mobile devices",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha --compilers coffee:coffee-script/register -R spec -u bdd -w",
+    "start": "(coffee --compile --output dist --watch src &);./node_modules/nodemon/bin/nodemon.js ./dist/pcn.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "mocha": "^2.3.4",
+    "should": "^8.0.2"
+  },
+  "dependencies": {
+    "nodemon": "^1.8.1"
+  }
+}
