@@ -46,6 +46,17 @@ makeInitials = (name, sep='.', trail='.', hyph='-') ->
     nm.trim().split(/\s+/).map((x) -> x[0]).join(sep).toUpperCase()
   name.split(hyph).map(splitBySpace).join(hyph) + trail
 
+collectDirsAndFiles = (absPath, fileCondition) ->
+  lst = fs.readdirSync(absPath).map((x) -> path.join absPath, x)
+  i = 0; dirs = []; files = []
+  while i < lst.length
+    if fs.lstatSync(lst[i]).isDirectory()
+      dirs.push lst[i]
+    else
+      if fileCondition lst[i] then files.push lst[i]
+    i++
+  {dirs: dirs, files: files}
+
 if require.main is module
   console.log args()
 else
