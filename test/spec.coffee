@@ -35,3 +35,21 @@ describe 'arrayCmp(x, y)', ->
     sut.arrayCmp([0, 0, 2, 4], [0, 0, 15]).should.equal -1
     sut.arrayCmp([0, 13], [0, 2, 2]).should.equal 1
     sut.arrayCmp([11, 2], [11, 2]).should.equal 0
+
+describe 'strcmpNaturally(x, y)', ->
+  it 'compares strings "naturally" with respect to embedded numbers', ->
+    sut.strcmpNaturally("zulu", "charlie").should.equal 1
+    sut.strcmpNaturally("", "").should.equal 0
+    sut.strcmpNaturally("Grima", "Grima").should.equal 0
+    sut.strcmpNaturally("2a", "10a").should.equal -1
+    sut.strcmpNaturally("alfa", "bravo").should.equal -1
+
+describe 'makeInitials(name)', ->
+  it 'reduces a string of names to initials', ->
+    sut.makeInitials(" ").should.equal "."
+    sut.makeInitials("John ronald reuel Tolkien").should.equal "J.R.R.T."
+    sut.makeInitials("e. B. Sledge").should.equal "E.B.S."
+    sut.makeInitials("Apsley Cherry-Garrard").should.equal "A.C-G."
+    sut.makeInitials("Windsor Saxe-\tCoburg - Gotha").should.equal "W.S-C-G."
+    sut.makeInitials("Elisabeth Kubler-- - Ross").should.equal "E.K---R."
+    sut.makeInitials("Fitz-Simmons   Ashton-Burke Leigh").should.equal "F-S.A-B.L."

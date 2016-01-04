@@ -36,6 +36,16 @@ arrayCmp = (x, y) ->
 
 strcmp = (x, y) -> if x < y then -1 else +(x > y)
 
+strcmpNaturally = (x, y) ->
+  a = strStripNumbers x
+  b = strStripNumbers y
+  if a and b then arrayCmp a, b else strcmp x, y
+
+makeInitials = (name, sep='.', trail='.', hyph='-') ->
+  splitBySpace = (nm) ->
+    nm.trim().split(/\s+/).map((x) -> x[0]).join(sep).toUpperCase()
+  name.split(hyph).map(splitBySpace).join(hyph) + trail
+
 if require.main is module
   console.log args()
 else
@@ -44,3 +54,5 @@ else
   u.hasExtOf = hasExtOf
   u.strStripNumbers = strStripNumbers
   u.arrayCmp = arrayCmp
+  u.strcmpNaturally = strcmpNaturally
+  u.makeInitials = makeInitials
