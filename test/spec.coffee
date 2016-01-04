@@ -22,3 +22,16 @@ describe 'strStripNumbers(str)', ->
   it 'returns an array of numbers embedded in str', ->
     sut.strStripNumbers('13uk4_8pz11n').should.deepEqual [13, 4, 8, 11]
     assert.equal sut.strStripNumbers('Mocha'), null
+
+describe 'arrayCmp(x, y)', ->
+  it 'compares arrays of integers using "string semantics"', ->
+    sut.arrayCmp([], [8]).should.equal -1
+    sut.arrayCmp([], []).should.equal 0
+    sut.arrayCmp([1], []).should.equal 1
+    sut.arrayCmp([3], []).should.equal 1
+    sut.arrayCmp([1, 2, 3], [1, 2, 3, 4, 5]).should.equal -1
+    sut.arrayCmp([1, 4], [1, 4, 16]).should.equal -1
+    sut.arrayCmp([2, 8], [2, 2, 3]).should.equal 1
+    sut.arrayCmp([0, 0, 2, 4], [0, 0, 15]).should.equal -1
+    sut.arrayCmp([0, 13], [0, 2, 2]).should.equal 1
+    sut.arrayCmp([11, 2], [11, 2]).should.equal 0

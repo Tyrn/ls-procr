@@ -23,6 +23,19 @@ strStripNumbers = (str) ->
   match = str.match /\d+/g
   if match then match.map __.parseInt else match
 
+arrayCmp = (x, y) ->
+  if x.length is 0 then return (if y.length is 0 then 0 else -1)
+  if y.length is 0 then return (if x.length is 0 then 0 else 1)
+  i = 0
+  while x[i] is y[i]
+    if i is x.length - 1 or i is y.length - 1
+      if x.length is y.length then return 0
+      return if x.length < y.length then -1 else 1
+    i++
+  if x[i] < y[i] then -1 else 1
+
+strcmp = (x, y) -> if x < y then -1 else +(x > y)
+
 if require.main is module
   console.log args()
 else
@@ -30,3 +43,4 @@ else
   u.sansExt = sansExt
   u.hasExtOf = hasExtOf
   u.strStripNumbers = strStripNumbers
+  u.arrayCmp = arrayCmp
