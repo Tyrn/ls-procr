@@ -7,7 +7,7 @@ require("fake-require-main").fakeFor require, __filename, "electron"
 __ = require 'lodash'
 path = require 'path'
 fs = require 'fs-extra'
-
+groove = require 'groove'
 
 args = do ->
   if require.main is module
@@ -243,9 +243,29 @@ buildAlbum = ->
 
 
 copyAlbum = ->
+  setTags = (i, total, pth, title) ->
+    buildTitle = (s) -> if title then title else "#{i} #{s}"
+    groove.open pth,
+      (err, file) ->
+        if err then throw err
+        file.setMetadata 'track', "#{i}/#{total}"
+        if args.artist_tag and args.album_tag
+          file.setMetadata 'title', buildTitle makeInitials(args.artist_tag) + ' - ' + args.album_tag
+          file.setMetadata 'artist', args.artist_tag
+          file.setMetadata 'album', args.album_tag
+        else if args.artist_tag
+          file.setMetadata 'title', buildTitle args.artist_tag
+          file.setMetadata 'artist', args.artist_tag
+        else if args.album_tag
+          file.setMetadata 'title', buildTitle args.album_tag
+          file.setMetadata 'album', args.album_tag
+        # console.log i, file.metadata()
+        file.save((err) -> if err then throw err)
+  
   copyFile = (i, total, entry) ->
     fs.copySync entry.src, entry.dst
     console.log spacePad(4, i) + '/' + total + ' \u27a4 ' + entry.dst
+    setTags i, total, entry.dst, if args.file_title then sansExt path.basename entry.dst else null
 
   alb = buildAlbum()
 
