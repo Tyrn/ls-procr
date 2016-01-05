@@ -236,9 +236,8 @@ buildAlbum = ->
 copyAlbum = ->
   copyFile = (i, total, entry) ->
     fs.copySync entry.src, entry.dst
-    console.log spacePad(4, i) + '/' + total + ' \u2726 ' + entry.dst
+    console.log spacePad(4, i) + '/' + total + ' \u27a4 ' + entry.dst
 
-  
   alb = buildAlbum()
 
   if args.reverse
