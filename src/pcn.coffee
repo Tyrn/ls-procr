@@ -8,6 +8,7 @@ __ = require 'lodash'
 path = require 'path'
 fs = require 'fs-extra'
 
+
 args = (->
   if require.main is module
     ArgumentParser = require('argparse').ArgumentParser
@@ -62,17 +63,21 @@ args = (->
     null
 )(@)
 
+
 sansExt = (pth) ->
   parts = path.parse pth
   path.join parts.dir, parts.name
+
 
 hasExtOf = (pth, ext) ->
   extension = if ext is '' or ext[0] is '.' then ext else '.' + ext
   path.extname(pth).toUpperCase() is extension.toUpperCase()
 
+
 strStripNumbers = (str) ->
   match = str.match /\d+/g
   if match then match.map __.parseInt else match
+
 
 arrayCmp = (x, y) ->
   if x.length is 0 then return (if y.length is 0 then 0 else -1)
@@ -85,12 +90,15 @@ arrayCmp = (x, y) ->
     i++
   if x[i] < y[i] then -1 else 1
 
+
 strcmp = (x, y) -> if x < y then -1 else +(x > y)
+
 
 strcmpNaturally = (x, y) ->
   a = strStripNumbers x
   b = strStripNumbers y
   if a and b then arrayCmp a, b else strcmp x, y
+
 
 makeInitials = (name, sep='.', trail='.', hyph='-') ->
   splitBySpace = (nm) ->
@@ -99,40 +107,41 @@ makeInitials = (name, sep='.', trail='.', hyph='-') ->
 
 collectDirsAndFiles = (absPath, fileCondition) ->
   lst = fs.readdirSync(absPath).map((x) -> path.join absPath, x)
-  i = 0; dirs = []; files = []
-  while i < lst.length
-    if fs.lstatSync(lst[i]).isDirectory()
-      dirs.push lst[i]
+  dirs = []; files = []
+  for item in lst
+    if fs.lstatSync(item).isDirectory()
+      dirs.push item
     else
-      if fileCondition lst[i] then files.push lst[i]
-    i++
+      if fileCondition item then files.push item
   {dirs: dirs, files: files}
 
+
 fileCount = (dirPath, fileCondition) ->
-  i = 0; cnt = 0; haul = collectDirsAndFiles dirPath, fileCondition
-  while i < haul.dirs.length
-    cnt += fileCount haul.dirs[i], fileCondition
-    i++
-  i = 0
-  while i < haul.files.length
-    if fileCondition haul.files[i] then cnt++
-    i++
+  cnt = 0; haul = collectDirsAndFiles dirPath, fileCondition
+  for dir in haul.dirs
+    cnt += fileCount dir, fileCondition
+  for file in haul.files
+    if fileCondition file then cnt++
   cnt
+
 
 comparePath = (xp, yp) ->
   x = sansExt(xp)
   y = sansExt(yp)
   if args.sort_lex then strcmp x, y else strcmpNaturally x, y
 
+
 compareFile = (xf, yf) ->
   x = sansExt path.parse(xf).base
   y = sansExt path.parse(yf).base
   if args.sort_lex then strcmp x, y else strcmpNaturally x, y
 
+
 isAudioFile = (pth) ->
   if fs.lstatSync(pth).isDirectory() then return false
   if ['.MP3', '.M4A'].indexOf(path.extname(pth).toUpperCase()) isnt -1 then return true
   false
+
 
 listDirGroom = (absPath, reverse) ->
   haul = collectDirsAndFiles absPath, isAudioFile
@@ -141,37 +150,63 @@ listDirGroom = (absPath, reverse) ->
     files: haul.files.sort if reverse then (xf, yf) -> -compareFile xf, yf else compareFile
   }
 
+
 zeroPad = (w, i) -> (['ZZZ', '0', '00', '000', '0000', '00000'][w] + i).slice(-w)
+
 
 spacePad = (w, i) -> (['ZZZ', ' ', '  ', '   ', '    ', '     '][w] + i).slice(-w)
 
+
 decorateDirName = (i, name) -> zeroPad(3, i) + '-' + name
+
 
 decorateFileName = (cntw, i, name) ->
   zeroPad(cntw, i) + '-' + if args.unified_name then args.unified_name + path.extname(name) else name
 
-traverseFlatDst = (srcDir, dstRoot, flatAcc, fcount, cntw) ->
-  i = 0; groom = listDirGroom srcDir, false
-  while i < groom.dirs.length
-    traverseFlatDst groom.dirs[i], dstRoot, flatAcc, fcount, cntw
-    i++
-  i = 0
-  while i < groom.files.length
-    dst = path.join dstRoot, decorateFileName cntw, fcount[0], path.basename groom.files[i]
-    flatAcc.push {src: groom.files[i], dst: dst}
+
+traverseFlatDst = (srcDir, dstRoot, fcount, cntw) ->
+  groom = listDirGroom srcDir, false
+  for dir in groom.dirs
+    yield from traverseFlatDst dir, dstRoot, fcount, cntw
+  for file in groom.files
+    dst = path.join dstRoot, decorateFileName cntw, fcount[0], path.basename file
     fcount[0]++
-    i++
+    yield {src: file, dst: dst}
+  return
+
+
+traverseFlatDstReverse = (srcDir, dstRoot, fcount, cntw) ->
+  groom = listDirGroom srcDir, true
+  for file in groom.files
+    dst = path.join dstRoot, decorateFileName cntw, fcount[0], path.basename file
+    fcount[0]--
+    yield {src: file, dst: dst}
+  for dir in groom.dirs
+    yield from traverseFlatDstReverse dir, dstRoot, fcount, cntw
+  return
+
+
+traverseTreeDst = (srcDir, dstRoot, dstStep, cntw) ->
+  groom = listDirGroom srcDir, false
+  for dir, i in groom.dirs
+    step = path.join dstStep, decorateDirName i, path.basename dir
+    fs.mkdirSync path.join dstRoot, step
+    yield from traverseTreeDst dir, dstRoot, step, cntw
+  for file, i in groom.files
+    dst = path.join dstRoot, path.join dstStep, decorateFileName cntw, i, path.basename file
+    yield {src: file, dst: dst}
+  return
+
 
 groom = (src, dst, cnt) ->
-  flatAcc = []; cntw = cnt.toString().length
+  cntw = cnt.toString().length
   if args.tree_dst
-    traverseFlatDst src, dst, flatAcc, [1], cntw
+    return traverseTreeDst src, dst, '', cntw
   else
     if args.reverse
-      traverseFlatDst src, dst, flatAcc, [1], cntw
+      return traverseFlatDstReverse src, dst, [cnt], cntw
     else
-     traverseFlatDst src, dst, flatAcc, [1], cntw
-  flatAcc
+      return traverseFlatDst src, dst, [1], cntw
 
 
 buildAlbum = -> 
@@ -207,9 +242,18 @@ copyAlbum = ->
   alb = buildAlbum()
 
   if args.reverse
-    copyFile alb.count - i, alb.count, round for round, i in alb.belt
+    `var i = 0;
+     for(round of alb.belt) {
+       copyFile(alb.count - i, alb.count, round);
+       i++;
+     }`
   else
-    copyFile i + 1, alb.count, round for round, i in alb.belt
+    `var i = 0;
+     for(round of alb.belt) {
+       copyFile(i + 1, alb.count, round);
+       i++;
+     }`
+  return
 
 
 if require.main is module
