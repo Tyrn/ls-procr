@@ -12,12 +12,15 @@ fs = require 'fs-extra'
 args = (->
   if require.main is module
     ArgumentParser = require('argparse').ArgumentParser
+    cmdName = 'pcf'
     parser = new ArgumentParser({
+      prog: cmdName,
       version: '0.0.1',
-      addHelp: true,
+      addHelp: true
       description:
         [
-          'pcn "Procrustes" SmArT is a CLI utility for copying subtrees containing supported audio',
+          cmdName,
+          '"Procrustes" SmArT is a CLI utility for copying subtrees containing supported audio',
           'files in sequence, naturally sorted.',
           'The end result is a "flattened" copy of the source subtree. "Flattened" means',
           'that only a namesake of the root source directory is created, where all the files get',
@@ -61,7 +64,7 @@ args = (->
     rg
   else
     null
-)(@)
+)()
 
 
 sansExt = (pth) ->
@@ -104,6 +107,7 @@ makeInitials = (name, sep='.', trail='.', hyph='-') ->
   splitBySpace = (nm) ->
     nm.trim().split(/\s+/).map((x) -> x[0]).join(sep).toUpperCase()
   name.split(hyph).map(splitBySpace).join(hyph) + trail
+
 
 collectDirsAndFiles = (absPath, fileCondition) ->
   lst = fs.readdirSync(absPath).map((x) -> path.join absPath, x)
