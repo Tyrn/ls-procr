@@ -1,6 +1,8 @@
 #!/usr/bin/env coffee
 
 debugger
+# Debugging in iron-node
+require("fake-require-main").fakeFor require, __filename, "electron"
 
 __ = require 'lodash'
 path = require 'path'
@@ -22,36 +24,36 @@ args = (->
           'get set, tags "Artist" and "Album" can be replaced optionally.',
           'The writing process is strictly sequential: either starting with the number one file,',
           'or in the reversed order. This can be important for some mobile devices.'
-        ].join(' ')
+        ].join ' '
     })
 
-    parser.addArgument(['-f', '--file-title'], {help: "use file name for title tag", action: 'storeTrue'})
-    parser.addArgument(['-x', '--sort-lex'], {help: "sort files lexicographically", action: 'storeTrue'})
-    parser.addArgument(['-t', '--tree-dst'], {help: "retain the tree structure of the source album at destination", action: 'storeTrue'})
-    parser.addArgument(['-p', '--drop-dst'], {help: "do not create destination directory", action: 'storeTrue'})
-    parser.addArgument(['-r', '--reverse'], {help: "copy files in reverse order (number one file is the last to be copied)", action: 'storeTrue'})
-    parser.addArgument(['-e', '--file-type'], {help: "accept only audio files of the specified type"})
-    parser.addArgument(['-u', '--unified-name'],
+    parser.addArgument ['-f', '--file-title'], {help: "use file name for title tag", action: 'storeTrue'}
+    parser.addArgument ['-x', '--sort-lex'], {help: "sort files lexicographically", action: 'storeTrue'}
+    parser.addArgument ['-t', '--tree-dst'], {help: "retain the tree structure of the source album at destination", action: 'storeTrue'}
+    parser.addArgument ['-p', '--drop-dst'], {help: "do not create destination directory", action: 'storeTrue'}
+    parser.addArgument ['-r', '--reverse'], {help: "copy files in reverse order (number one file is the last to be copied)", action: 'storeTrue'}
+    parser.addArgument ['-e', '--file-type'], {help: "accept only audio files of the specified type"}
+    parser.addArgument ['-u', '--unified-name'],
       {
         help: [
                 "destination root directory name and file names are based on UNIFIED_NAME,",
                 "serial number prepended, file extensions retained; also album tag,",
                 "if the latter is not specified explicitly"
-              ].join(' ')
-      })
-    parser.addArgument(['-b', '--album-num'], {help: "0..99; prepend ALBUM_NUM to the destination root directory name"})
-    parser.addArgument(['-a', '--artist-tag'], {help: "artist tag name"})
-    parser.addArgument(['-g', '--album-tag'], {help: "album tag name"})
-    parser.addArgument(['src_dir'], {help: "source directory"})
-    parser.addArgument(['dst_dir'], {help: "general destination directory"})
+              ].join ' '
+      }
+    parser.addArgument ['-b', '--album-num'], {help: "0..99; prepend ALBUM_NUM to the destination root directory name"}
+    parser.addArgument ['-a', '--artist-tag'], {help: "artist tag name"}
+    parser.addArgument ['-g', '--album-tag'], {help: "album tag name"}
+    parser.addArgument ['src_dir'], {help: "source directory"}
+    parser.addArgument ['dst_dir'], {help: "general destination directory"}
 
     rg = parser.parseArgs()
 
-    rg.src_dir = path.resolve(rg.src_dir)
-    rg.dst_dir = path.resolve(rg.dst_dir)
+    rg.src_dir = path.resolve rg.src_dir
+    rg.dst_dir = path.resolve rg.dst_dir
 
     if rg.tree_dst and rg.reverse
-      console.log("  *** -t option ignored (conflicts with -r) ***")
+      console.log "  *** -t option ignored (conflicts with -r) ***"
       rg.tree_dst = false
     if rg.unified_name and not rg.album_tag
       rg.album_tag = rg.unified_name
@@ -135,7 +137,7 @@ isAudioFile = (pth) ->
 listDirGroom = (absPath, reverse) ->
   haul = collectDirsAndFiles absPath, isAudioFile
   {
-    dirs: haul.dirs.sort if reverse then (xp, yp) -> -comparePath xp, yp else comparePath,
+    dirs: haul.dirs.sort if reverse then (xp, yp) -> -comparePath xp, yp else comparePath
     files: haul.files.sort if reverse then (xf, yf) -> -compareFile xf, yf else compareFile
   }
 
@@ -155,14 +157,69 @@ traverseFlatDst = (srcDir, dstRoot, flatAcc, fcount, cntw) ->
     i++
   i = 0
   while i < groom.files.length
-    dst = path.join(dstRoot, decorateFileName(cntw, fcount[0], path.basename(groom.files[i])))
+    dst = path.join dstRoot, decorateFileName cntw, fcount[0], path.basename groom.files[i]
     flatAcc.push {src: groom.files[i], dst: dst}
     fcount[0]++
     i++
 
+groom = (src, dst, cnt) ->
+  flatAcc = []; cntw = cnt.toString().length
+  if args.tree_dst
+    traverseFlatDst src, dst, flatAcc, [1], cntw
+  else
+    if args.reverse
+      traverseFlatDst src, dst, flatAcc, [1], cntw
+    else
+     traverseFlatDst src, dst, flatAcc, [1], cntw
+  flatAcc
+
+
+buildAlbum = -> 
+  srcName = path.basename args.src_dir
+  prefix = if args.album_num then zeroPad(2, args.album_num) + '-' else ''
+  baseDst = prefix + if args.unified_name then args.unified_name else srcName
+  executiveDst = path.join args.dst_dir, if args.drop_dst then '' else baseDst
+
+  if not args.drop_dst
+    if fs.existsSync executiveDst
+      console.log 'Destination directory "' + executiveDst + '" already exists.'
+      process.exit()
+    else
+      fs.mkdirSync executiveDst
+  
+  tot = fileCount args.src_dir, isAudioFile
+  belt = groom args.src_dir, executiveDst, tot
+  
+  if not args.drop_dst and tot is 0
+    fs.unlinkSync executiveDst
+    console.log 'There are no supported audio files in the source directory "' + args.src_dir + '".'
+    process.exit()
+  
+  {count: tot, belt: belt}
+
+
+copyAlbum = ->
+  copyFile = (i, total, entry) ->
+    fs.copySync entry.src, entry.dst
+    console.log spacePad(4, i) + '/' + total + ' \u2726 ' + entry.dst
+
+  
+  alb = buildAlbum()
+
+  if args.reverse
+    i = 0
+    while i < alb.count
+      copyFile alb.count - i, alb.count, alb.belt[i]
+      i++
+  else
+    i = 0
+    while i < alb.count
+      copyFile i + 1, alb.count, alb.belt[i]
+      i++
+
 
 if require.main is module
-  console.log 'main: '
+  copyAlbum()
 else
   u = module.exports
   u.sansExt = sansExt
