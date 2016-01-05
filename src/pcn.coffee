@@ -207,15 +207,9 @@ copyAlbum = ->
   alb = buildAlbum()
 
   if args.reverse
-    i = 0
-    while i < alb.count
-      copyFile alb.count - i, alb.count, alb.belt[i]
-      i++
+    copyFile alb.count - i, alb.count, round for round, i in alb.belt
   else
-    i = 0
-    while i < alb.count
-      copyFile i + 1, alb.count, alb.belt[i]
-      i++
+    copyFile i + 1, alb.count, round for round, i in alb.belt
 
 
 if require.main is module
