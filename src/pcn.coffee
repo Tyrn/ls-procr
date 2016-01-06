@@ -148,7 +148,7 @@ compareFile = (xf, yf) ->
 
 isAudioFile = (pth) ->
   if fs.lstatSync(pth).isDirectory() then return false
-  if ['.MP3', '.M4A'].indexOf(path.extname(pth).toUpperCase()) isnt -1 then return true
+  if ['.MP3', '.M4A', '.M4B', '.OGG', '.WMA'].indexOf(path.extname(pth).toUpperCase()) isnt -1 then return true
   false
 
 
