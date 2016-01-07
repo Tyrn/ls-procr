@@ -7,7 +7,7 @@ require("fake-require-main").fakeFor require, __filename, "electron"
 __ = require 'lodash'
 path = require 'path'
 fs = require 'fs-extra'
-groove = require 'groove'
+zmq = require 'zmq'
 
 args = do ->
   if require.main is module
@@ -243,31 +243,55 @@ buildAlbum = ->
 
 
 copyAlbum = ->
+  alb = buildAlbum()
+
+  spawn = require('child_process').spawn
+  srv = spawn 'python', ['-u', '/home/alexey/Dropbox/procrustes/procrserver.py']
+  srv.stdout.on 'data', (data) -> console.log "stdout: #{data}"
+  srv.stderr.on 'data', (data) -> console.log "\u27a4".repeat(7)
+
+  requester = zmq.socket 'req'
+  check = 0
+  requester.on "message",
+    (reply) ->
+      # console.log "Reply #{spacePad(4, check)}: #{reply.toString()}"
+      check++
+      if check >= alb.count
+        requester.close()
+        console.log "#{check} files copied and tagged"
+        process.exit 0
+      return
+  
+  requester.connect "tcp://localhost:64107"
+  
   setTags = (i, total, pth, title) ->
     buildTitle = (s) -> if title then title else "#{i} #{s}"
-    groove.open pth,
-      (err, file) ->
-        if err then throw err
-        file.setMetadata 'track', "#{i}/#{total}"
-        if args.artist_tag and args.album_tag
-          file.setMetadata 'title', buildTitle makeInitials(args.artist_tag) + ' - ' + args.album_tag
-          file.setMetadata 'artist', args.artist_tag
-          file.setMetadata 'album', args.album_tag
-        else if args.artist_tag
-          file.setMetadata 'title', buildTitle args.artist_tag
-          file.setMetadata 'artist', args.artist_tag
-        else if args.album_tag
-          file.setMetadata 'title', buildTitle args.album_tag
-          file.setMetadata 'album', args.album_tag
-        # console.log i, file.metadata()
-        file.save((err) -> if err then throw err)
+
+    rq = {}
+    rq.request = 'settags'
+    rq.file = pth
+    rq.tags = {}
+    rq.tags.tracknumber = "#{i}/#{total}"
+    
+    if args.artist_tag and args.album_tag
+      rq.tags.title = buildTitle makeInitials(args.artist_tag) + ' - ' + args.album_tag
+      rq.tags.artist = args.artist_tag
+      rq.tags.album = args.album_tag
+    else if args.artist_tag
+      rq.tags.title = buildTitle args.artist_tag
+      rq.tags.artist = args.artist_tag
+    else if args.album_tag
+      rq.tags.title = buildTitle args.album_tag
+      rq.tags.album = args.album_tag
+    
+    requester.send JSON.stringify(rq)
+    return
   
   copyFile = (i, total, entry) ->
     fs.copySync entry.src, entry.dst
     console.log spacePad(4, i) + '/' + total + ' \u27a4 ' + entry.dst
     setTags i, total, entry.dst, if args.file_title then sansExt path.basename entry.dst else null
-
-  alb = buildAlbum()
+    return
 
   if args.reverse
     `var i = 0;
