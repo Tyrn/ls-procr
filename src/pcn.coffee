@@ -333,7 +333,8 @@ copyAlbum = ->
   check = 0
   requester.on "message",
     (reply) ->
-      check++
+      rpl = JSON.parse(reply)
+      if rpl.request is 'settags' then check++
       if check >= alb.count
         requester.close()
         console.log "     #{fluffChar.repeat(2)} #{check} file(s) copied " + 
