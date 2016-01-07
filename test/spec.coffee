@@ -53,3 +53,4 @@ describe 'makeInitials(name)', ->
     sut.makeInitials("Windsor Saxe-\tCoburg - Gotha").should.equal "W.S-C-G."
     sut.makeInitials("Elisabeth Kubler-- - Ross").should.equal "E.K---R."
     sut.makeInitials("Fitz-Simmons   Ashton-Burke Leigh").should.equal "F-S.A-B.L."
+    sut.makeInitials('Arleigh"31-knot"Burke').should.equal "A.B."

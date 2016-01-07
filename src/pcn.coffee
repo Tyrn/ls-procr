@@ -72,6 +72,9 @@ args = do ->
     null
 
 
+fluffChar = "\u27a4"
+
+
 sansExt = (pth) ->
   parts = path.parse pth
   path.join parts.dir, parts.name
@@ -109,9 +112,17 @@ strcmpNaturally = (x, y) ->
 
 
 makeInitials = (name, sep='.', trail='.', hyph='-') ->
+  # Remove double quoted substring, if any.
+  quotes = name.match /\"/g
+  qcnt = if quotes then quotes.length else 0
+  enm = if qcnt is 0 or qcnt %% 2
+          name
+        else
+          name.replace(/"(.*?)"/g, ' ')
+
   splitBySpace = (nm) ->
     nm.trim().split(/\s+/).map((x) -> x[0]).join(sep).toUpperCase()
-  name.split(hyph).map(splitBySpace).join(hyph) + trail
+  enm.split(hyph).map(splitBySpace).join(hyph) + trail
 
 
 collectDirsAndFiles = (absPath, fileCondition) ->
@@ -248,7 +259,7 @@ copyAlbum = ->
   spawn = require('child_process').spawn
   srv = spawn 'python', ['-u', '/home/alexey/Dropbox/procrustes/procrserver.py']
   srv.stdout.on 'data', (data) -> console.log "stdout: #{data}"
-  srv.stderr.on 'data', (data) -> console.log "\u27a4".repeat(7)
+  srv.stderr.on 'data', (data) -> console.log fluffChar.repeat(7)
 
   requester = zmq.socket 'req'
   check = 0
@@ -258,7 +269,8 @@ copyAlbum = ->
       check++
       if check >= alb.count
         requester.close()
-        console.log "#{check} files copied and tagged"
+        console.log "     #{fluffChar.repeat(2)} #{check} files copied " + 
+                    "and tagged #{fluffChar.repeat(2)}"
         process.exit 0
       return
   
@@ -289,7 +301,7 @@ copyAlbum = ->
   
   copyFile = (i, total, entry) ->
     fs.copySync entry.src, entry.dst
-    console.log spacePad(4, i) + '/' + total + ' \u27a4 ' + entry.dst
+    console.log "#{spacePad(4, i)}/#{total} #{fluffChar} #{entry.dst}"
     setTags i, total, entry.dst, if args.file_title then sansExt path.basename entry.dst else null
     return
 
@@ -305,6 +317,7 @@ copyAlbum = ->
        copyFile(i + 1, alb.count, round);
        i++;
      }`
+  # setTimeout(-> console.log "Exit on timeout", 10000)
   return
 
 
