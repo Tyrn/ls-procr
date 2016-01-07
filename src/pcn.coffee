@@ -76,42 +76,68 @@ fluffChar = "\u27a4"
 
 
 sansExt = (pth) ->
+  ###
+  Discards file extension
+  ###
   parts = path.parse pth
   path.join parts.dir, parts.name
 
 
 hasExtOf = (pth, ext) ->
+  ###
+  Returns true, if pth has extension ext, case and leading dot insensitive
+  ###
   extension = if ext is '' or ext[0] is '.' then ext else '.' + ext
   path.extname(pth).toUpperCase() is extension.toUpperCase()
 
 
 strStripNumbers = (str) ->
+  ###
+  Returns a vector of integer numbers
+  embedded in a string argument
+  ###
   match = str.match /\d+/g
   if match then match.map __.parseInt else match
 
 
 arrayCmp = (x, y) ->
+  ###
+  Compares arrays of integers using 'string semantics'
+  ###
   if x.length is 0 then return (if y.length is 0 then 0 else -1)
   if y.length is 0 then return (if x.length is 0 then 0 else 1)
   i = 0
   while x[i] is y[i]
     if i is x.length - 1 or i is y.length - 1
-      if x.length is y.length then return 0
+      # Short array is a prefix of the long one; end reached. All is equal so far.
+      if x.length is y.length then return 0   # Long array is no longer than the short one.
       return if x.length < y.length then -1 else 1
     i++
+  # Difference encountered.
   if x[i] < y[i] then -1 else 1
 
 
 strcmp = (x, y) -> if x < y then -1 else +(x > y)
+### Compares strings ###
 
 
 strcmpNaturally = (x, y) ->
+  ###
+  If both strings contain digits, returns numerical comparison based on the numeric
+  values embedded in the strings, otherwise returns the standard string comparison.
+  The idea of the natural sort as opposed to the standard lexicographic sort is one of coping
+  with the possible absence of the leading zeros in 'numbers' of files or directories
+  ###
   a = strStripNumbers x
   b = strStripNumbers y
   if a and b then arrayCmp a, b else strcmp x, y
 
 
 makeInitials = (name, sep='.', trail='.', hyph='-') ->
+  ###
+  Reduces a string of names to initials
+  ###
+
   # Remove double quoted substring, if any.
   quotes = name.match /\"/g
   qcnt = if quotes then quotes.length else 0
@@ -126,6 +152,9 @@ makeInitials = (name, sep='.', trail='.', hyph='-') ->
 
 
 collectDirsAndFiles = (absPath, fileCondition) ->
+  ###
+  Returns a list of directories in absPath directory, and a list of files filtered by fileCondition
+  ###
   lst = fs.readdirSync(absPath).map((x) -> path.join absPath, x)
   dirs = []; files = []
   for item in lst
@@ -137,6 +166,9 @@ collectDirsAndFiles = (absPath, fileCondition) ->
 
 
 fileCount = (dirPath, fileCondition) ->
+  ###
+  Returns a total number of files in the dirPath directory filtered by fileCondition
+  ###
   cnt = 0; haul = collectDirsAndFiles dirPath, fileCondition
   for dir in haul.dirs
     cnt += fileCount dir, fileCondition
@@ -146,24 +178,38 @@ fileCount = (dirPath, fileCondition) ->
 
 
 comparePath = (xp, yp) ->
+  ###
+  Compares two paths, ignoring extensions
+  ###
   x = sansExt(xp)
   y = sansExt(yp)
   if args.sort_lex then strcmp x, y else strcmpNaturally x, y
 
 
 compareFile = (xf, yf) ->
+  ###
+  Compares two paths, filenames only, ignoring extensions
+  ###
   x = sansExt path.parse(xf).base
   y = sansExt path.parse(yf).base
   if args.sort_lex then strcmp x, y else strcmpNaturally x, y
 
 
 isAudioFile = (pth) ->
+  ###
+  Returns true, if pth is a recognized audio file
+  ###
   if fs.lstatSync(pth).isDirectory() then return false
   if ['.MP3', '.M4A', '.M4B', '.OGG', '.WMA'].indexOf(path.extname(pth).toUpperCase()) isnt -1 then return true
   false
 
 
 listDirGroom = (absPath, reverse) ->
+  ###
+  Returns (0) a naturally sorted list of
+  offspring directory paths (1) a naturally sorted list
+  of offspring file paths.
+  ###
   haul = collectDirsAndFiles absPath, isAudioFile
   {
     dirs: haul.dirs.sort if reverse then (xp, yp) -> -comparePath xp, yp else comparePath
@@ -185,6 +231,10 @@ decorateFileName = (cntw, i, name) ->
 
 
 traverseFlatDst = (srcDir, dstRoot, fcount, cntw) ->
+  ###
+  Recursively traverses the source directory and yields a sequence of (src, flat dst) pairs;
+  the destination directory and file names get decorated according to options
+  ###
   groom = listDirGroom srcDir, false
   for dir in groom.dirs
     yield from traverseFlatDst dir, dstRoot, fcount, cntw
@@ -196,6 +246,10 @@ traverseFlatDst = (srcDir, dstRoot, fcount, cntw) ->
 
 
 traverseFlatDstReverse = (srcDir, dstRoot, fcount, cntw) ->
+  ###
+  Recursively traverses the source directory backwards (-r) and yields a sequence of (src, flat dst) pairs;
+  the destination directory and file names get decorated according to options
+  ###
   groom = listDirGroom srcDir, true
   for file in groom.files
     dst = path.join dstRoot, decorateFileName cntw, fcount[0], path.basename file
@@ -207,6 +261,10 @@ traverseFlatDstReverse = (srcDir, dstRoot, fcount, cntw) ->
 
 
 traverseTreeDst = (srcDir, dstRoot, dstStep, cntw) ->
+  ###
+  Recursively traverses the source directory and yields a sequence of (src, tree dst) pairs;
+  the destination directory and file names get decorated according to options
+  ###
   groom = listDirGroom srcDir, false
   for dir, i in groom.dirs
     step = path.join dstStep, decorateDirName i, path.basename dir
@@ -219,6 +277,9 @@ traverseTreeDst = (srcDir, dstRoot, dstStep, cntw) ->
 
 
 groom = (src, dst, cnt) ->
+  ###
+  Makes an 'executive' run of traversing the source directory; returns the 'ammo belt' generator
+  ###
   cntw = cnt.toString().length
   if args.tree_dst
     return traverseTreeDst src, dst, '', cntw
@@ -230,6 +291,10 @@ groom = (src, dst, cnt) ->
 
 
 buildAlbum = -> 
+  ###
+  Sets up boilerplate required by the options and returns the ammo belt generator
+  of (src, dst) pairs
+  ###
   srcName = path.basename args.src_dir
   prefix = if args.album_num then zeroPad(2, args.album_num) + '-' else ''
   baseDst = prefix + if args.unified_name then args.unified_name else srcName
@@ -254,6 +319,9 @@ buildAlbum = ->
 
 
 copyAlbum = ->
+  ###
+  Runs through the ammo belt and does copying, in the reverse order if necessary
+  ###
   alb = buildAlbum()
 
   spawn = require('child_process').spawn
@@ -265,11 +333,10 @@ copyAlbum = ->
   check = 0
   requester.on "message",
     (reply) ->
-      # console.log "Reply #{spacePad(4, check)}: #{reply.toString()}"
       check++
       if check >= alb.count
         requester.close()
-        console.log "     #{fluffChar.repeat(2)} #{check} files copied " + 
+        console.log "     #{fluffChar.repeat(2)} #{check} file(s) copied " + 
                     "and tagged #{fluffChar.repeat(2)}"
         process.exit 0
       return
@@ -317,7 +384,6 @@ copyAlbum = ->
        copyFile(i + 1, alb.count, round);
        i++;
      }`
-  # setTimeout(-> console.log "Exit on timeout", 10000)
   return
 
 
