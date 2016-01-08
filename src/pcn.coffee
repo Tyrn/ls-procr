@@ -328,6 +328,15 @@ copyAlbum = ->
   srv = spawn 'python', ['-u', '/home/alexey/Dropbox/procrustes/procrserver.py']
   srv.stdout.on 'data', (data) -> console.log "stdout: #{data}"
   srv.stderr.on 'data', (data) -> console.log fluffChar.repeat(7)
+  srv.on 'close',
+    (code) ->
+      # Doesn't appear to be ever called.
+      if code is 0
+        console.log "Tag server already running"
+        # process.exit()
+      else
+        console.log "Tag server terminated: #{code}"
+      return
 
   requester = zmq.socket 'req'
   check = 0
