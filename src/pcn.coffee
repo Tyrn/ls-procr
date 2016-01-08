@@ -325,17 +325,15 @@ copyAlbum = ->
   alb = buildAlbum()
 
   spawn = require('child_process').spawn
-  srv = spawn 'python', ['-u', '/home/alexey/Dropbox/procrustes/procrserver.py']
+  srv = spawn 'procrserver'
   srv.stdout.on 'data', (data) -> console.log "stdout: #{data}"
-  srv.stderr.on 'data', (data) -> console.log fluffChar.repeat(7)
+  srv.stderr.on 'data', (data) -> console.log "stderr: #{data}"
   srv.on 'close',
     (code) ->
-      # Doesn't appear to be ever called.
       if code is 0
-        console.log "Tag server already running"
-        # process.exit()
+        console.log fluffChar.repeat(7)
       else
-        console.log "Tag server terminated: #{code}"
+        console.log "Tag server error: #{code}"
       return
 
   requester = zmq.socket 'req'
