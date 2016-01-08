@@ -8,6 +8,7 @@ __ = require 'lodash'
 path = require 'path'
 fs = require 'fs-extra'
 zmq = require 'zmq'
+tm = require('terminal-kit').terminal
 
 args = do ->
   if require.main is module
@@ -344,8 +345,8 @@ copyAlbum = ->
       if rpl.request is 'settags' then check++
       if check >= alb.count
         requester.close()
-        console.log "     #{fluffChar.repeat(2)} #{check} file(s) copied " + 
-                    "and tagged #{fluffChar.repeat(2)}"
+        tm.brightWhite  "     #{fluffChar.repeat(2)} #{check} file(s) copied " + 
+                        "and tagged #{fluffChar.repeat(2)}\n"
         process.exit 0
       return
   
