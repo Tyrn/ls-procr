@@ -16,7 +16,7 @@ isRoot = require 'is-root'
 # Callbacks never called?
 process.on 'SIGINT',
   ->
-    term.red "Aborted by user?\n"
+    tm.red.bold "Aborted by user?\n"
     process.exit()
 
 
@@ -45,26 +45,26 @@ lks = {
 
 
 if cmd is lks.cmd.link or srv is lks.srv.link
-  tm.bold "\nThe following entities on the system will be overwritten:\n\n"
+  tm.brightWhite "\nThe following entities on the system will be overwritten:\n\n"
 if cmd
   lsl(cmd)
 if srv
   lsl(srv)
 
-tm.bold "\nThe following symlinks\n\n"
+tm.brightWhite "\nThe following symlinks\n\n"
 
 for k, v of lks
-  tm.cyan.bold "#{v.link}"
+  tm.brightCyan "#{v.link}"
   tm " -> "
-  tm.green.bold "#{v.target}\n"
+  tm.brightGreen "#{v.target}\n"
 
-tm.bold "\nare going to be created. Are you sure? [Y|n]\n"
+tm.brightWhite "\nare going to be created. Are you sure? [Y|n]\n"
 
 tm.yesOrNo {yes: ['y', 'ENTER'], no: ['n']},
   (error, result) ->
     if result
       if not isRoot()
-        tm.red.bold "Permission denied.\n"
+        tm.brightRed "Permission denied.\n"
         tm '\n'
         process.exit()
       for k, v of lks

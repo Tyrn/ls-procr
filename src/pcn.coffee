@@ -64,7 +64,7 @@ args = do ->
     rg.dst_dir = path.resolve rg.dst_dir
 
     if rg.tree_dst and rg.reverse
-      console.log "  *** -t option ignored (conflicts with -r) ***"
+      tm.brightWhite "  *** -t option ignored (conflicts with -r) ***\n"
       rg.tree_dst = false
     if rg.unified_name and not rg.album_tag
       rg.album_tag = rg.unified_name
@@ -73,7 +73,7 @@ args = do ->
     null
 
 
-fluffChar = "\u27a4"
+fCh = "\u27a4"
 
 
 sansExt = (pth) ->
@@ -303,7 +303,7 @@ buildAlbum = ->
 
   if not args.drop_dst
     if fs.existsSync executiveDst
-      console.log 'Destination directory "' + executiveDst + '" already exists.'
+      tm.brightWhite "#{fCh.repeat 2} Destination directory \"#{executiveDst}\" already exists.\n"
       process.exit()
     else
       fs.mkdirSync executiveDst
@@ -312,8 +312,8 @@ buildAlbum = ->
   belt = groom args.src_dir, executiveDst, tot
   
   if not args.drop_dst and tot is 0
-    fs.unlinkSync executiveDst
-    console.log 'There are no supported audio files in the source directory "' + args.src_dir + '".'
+    fs.removeSync executiveDst
+    tm.brightWhite "#{fCh.repeat 2} There are no supported audio files in the source directory \"#{args.src_dir}\".\n"
     process.exit()
   
   {count: tot, belt: belt}
@@ -327,14 +327,14 @@ copyAlbum = ->
 
   spawn = require('child_process').spawn
   srv = spawn 'procrserver'
-  srv.stdout.on 'data', (data) -> console.log "stdout: #{data}"
-  srv.stderr.on 'data', (data) -> console.log "stderr: #{data}"
+  srv.stdout.on 'data', (data) -> tm.brightWhite "#{fCh.repeat 2} stdout: #{data}\n"
+  srv.stderr.on 'data', (data) -> tm.brightWhite "#{fCh.repeat 2} stderr: #{data}\n"
   srv.on 'close',
     (code) ->
       if code is 0
-        console.log fluffChar.repeat(7)
+        tm.white fCh.repeat(7) + '\n'
       else
-        console.log "Tag server error: #{code}"
+        tm.brightWhite "#{fCh.repeat 2} Tag server error: #{code}\n"
       return
 
   requester = zmq.socket 'req'
@@ -345,8 +345,8 @@ copyAlbum = ->
       if rpl.request is 'settags' then check++
       if check >= alb.count
         requester.close()
-        tm.brightWhite  "     #{fluffChar.repeat(2)} #{check} file(s) copied " + 
-                        "and tagged #{fluffChar.repeat(2)}\n"
+        tm.brightWhite  "     #{fCh.repeat 2} #{check} file(s) copied " + 
+                        "and tagged #{fCh.repeat 2}\n"
         process.exit 0
       return
   
@@ -377,7 +377,7 @@ copyAlbum = ->
   
   copyFile = (i, total, entry) ->
     fs.copySync entry.src, entry.dst
-    console.log "#{spacePad(4, i)}/#{total} #{fluffChar} #{entry.dst}"
+    tm.white "#{spacePad 4, i}/#{total} #{fCh} #{entry.dst}\n"
     setTags i, total, entry.dst, if args.file_title then sansExt path.basename entry.dst else null
     return
 
