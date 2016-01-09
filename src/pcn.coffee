@@ -319,35 +319,48 @@ buildAlbum = ->
   {count: tot, belt: belt}
 
 
+startServer = ->
+  spawn = require('child_process').spawn
+  srv = spawn 'procrserver'
+  srv.stdout.on 'data',
+    (data) ->
+      if data.toString().trim() is 'running'
+        tm.brightWhite "#{fCh.repeat 2} Server successfully started. Try again.\n"
+        process.exit()
+  
+  srv.stderr.on 'data', (data) -> tm.brightWhite "#{fCh.repeat 2} stderr: #{data}\n"
+
+  srv.on 'close',
+    (code) ->
+      if code is 0
+          copyAlbumOnce()
+      else
+        tm.brightWhite "#{fCh.repeat 2} Tag server error: #{code}\n"
+      return
+
+
 copyAlbum = ->
   ###
   Runs through the ammo belt and does copying, in the reverse order if necessary
   ###
+  tm.brightRed 'copyAlbum()\n'
   alb = buildAlbum()
-
-  spawn = require('child_process').spawn
-  srv = spawn 'procrserver'
-  srv.stdout.on 'data', (data) -> tm.brightWhite "#{fCh.repeat 2} stdout: #{data}\n"
-  srv.stderr.on 'data', (data) -> tm.brightWhite "#{fCh.repeat 2} stderr: #{data}\n"
-  srv.on 'close',
-    (code) ->
-      if code is 0
-        tm.white fCh.repeat(7) + '\n'
-      else
-        tm.brightWhite "#{fCh.repeat 2} Tag server error: #{code}\n"
-      return
 
   requester = zmq.socket 'req'
   check = 0
   requester.on "message",
     (reply) ->
       rpl = JSON.parse(reply)
-      if rpl.request is 'settags' then check++
-      if check >= alb.count
+      if rpl.reply is 'settags' then check++
+      if check < alb.count
+        track = strStripNumbers(rpl.tags.tracknumber)
+        tm.white "#{spacePad 5, track[0]}/#{track[1]} #{fCh} #{rpl.file}\n"
+      else
         requester.close()
-        tm.brightWhite  "     #{fCh.repeat 2} #{check} file(s) copied " + 
+        tm.brightWhite  "   #{fCh.repeat 2} #{check} file(s) copied " + 
                         "and tagged #{fCh.repeat 2}\n"
         process.exit 0
+
       return
   
   requester.connect "tcp://localhost:64107"
@@ -377,7 +390,6 @@ copyAlbum = ->
   
   copyFile = (i, total, entry) ->
     fs.copySync entry.src, entry.dst
-    tm.white "#{spacePad 4, i}/#{total} #{fCh} #{entry.dst}\n"
     setTags i, total, entry.dst, if args.file_title then sansExt path.basename entry.dst else null
     return
 
@@ -396,8 +408,21 @@ copyAlbum = ->
   return
 
 
+copyAlbumOnce = do ->
+  follower = -1
+  ->
+    follower++
+    if not follower then copyAlbum()
+    return
+
+
+main = ->
+  startServer()
+  return
+
+
 if require.main is module
-  copyAlbum()
+  main()
 else
   u = module.exports
   u.sansExt = sansExt

@@ -21,7 +21,7 @@ try:
     socket.bind("tcp://*:64107")
 except:
     sys.exit(0)
-
+print('running')
 try:
 
     while True:
@@ -35,8 +35,8 @@ try:
         if rq['request'] == 'settags':
             audio = mutagen.File(rq['file'], easy=True)
             if audio:
-                reply = '{{"request": "settags", "tags": {{"tracknumber": "{}"}}}}'
-                reply = reply.format(rq['tags']['tracknumber'])
+                reply = '{{"reply": "settags", "file": "{}", "tags": {{"tracknumber": "{}"}}}}'
+                reply = reply.format(rq['file'], rq['tags']['tracknumber'])
                 for tag, value in rq['tags'].items():
                     audio[tag] = value
                 audio.save()
