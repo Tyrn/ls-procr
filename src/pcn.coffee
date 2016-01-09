@@ -341,6 +341,24 @@ startServer = ->
   return
 
 
+fireRequest = (requester, i, alb) ->
+  round = alb.belt.next()
+  if round.done
+    tm.brightRed 'Out of ammo!\n'
+  else
+    if args.reverse
+      copyFile requester, alb.count - i, alb, round.value
+    else
+      copyFile requester, i + 1, alb, round.value
+  return
+
+
+consumeReply = (rpl) ->
+  track = strStripNumbers(rpl.tags.tracknumber)
+  tm.white "#{spacePad 5, track[0]}/#{track[1]} #{fCh} #{rpl.file}\n"
+  return
+
+
 receiveReply = do ->
   tagCnt = 0
   (reply, requester, alb) ->
@@ -348,13 +366,16 @@ receiveReply = do ->
     if rpl.reply is 'settags'
       tagCnt++
       if tagCnt < alb.count
-        track = strStripNumbers(rpl.tags.tracknumber)
-        tm.white "#{spacePad 5, track[0]}/#{track[1]} #{fCh} #{rpl.file}\n"
+        consumeReply rpl
+        fireRequest requester, tagCnt, alb
       else
+        consumeReply rpl
         requester.close()
         tm.brightWhite  "   #{fCh.repeat 2} #{tagCnt} file(s) copied " + 
                         "and tagged #{fCh.repeat 2}\n"
         process.exit 0
+    else if rpl.reply is 'serve'
+      fireRequest requester, tagCnt, alb
     return
 
 
@@ -368,55 +389,56 @@ startRequester = (alb) ->
   requester
 
 
+setTags = (requester, i, alb, entry) ->
+  buildTitle = (s) -> 
+    if args.file_title then sansExt path.basename entry.dst else "#{i} #{s}"
+
+  rq = {}
+  rq.request = 'settags'
+  rq.file = entry.dst
+  rq.tags = {}
+  rq.tags.tracknumber = "#{i}/#{alb.count}"
+  
+  if args.artist_tag and args.album_tag
+    rq.tags.title = buildTitle makeInitials(args.artist_tag) + ' - ' + args.album_tag
+    rq.tags.artist = args.artist_tag
+    rq.tags.album = args.album_tag
+  else if args.artist_tag
+    rq.tags.title = buildTitle args.artist_tag
+    rq.tags.artist = args.artist_tag
+  else if args.album_tag
+    rq.tags.title = buildTitle args.album_tag
+    rq.tags.album = args.album_tag
+  
+  requester.send JSON.stringify(rq)
+  return
+
+
+copyFile = (requester, i, alb, entry) ->
+  fs.copySync entry.src, entry.dst
+  setTags requester, i, alb, entry
+  return
+
+
 copyAlbum = ->
   ###
   Runs through the ammo belt and does copying, in the reverse order if necessary
   ###
-  tm.brightRed 'copyAlbum()\n'
   alb = buildAlbum()
-
   requester = startRequester(alb)
-  
-  setTags = (i, alb, entry) ->
-    buildTitle = (s) -> 
-      if args.file_title then sansExt path.basename entry.dst else "#{i} #{s}"
-
-    rq = {}
-    rq.request = 'settags'
-    rq.file = entry.dst
-    rq.tags = {}
-    rq.tags.tracknumber = "#{i}/#{alb.count}"
-    
-    if args.artist_tag and args.album_tag
-      rq.tags.title = buildTitle makeInitials(args.artist_tag) + ' - ' + args.album_tag
-      rq.tags.artist = args.artist_tag
-      rq.tags.album = args.album_tag
-    else if args.artist_tag
-      rq.tags.title = buildTitle args.artist_tag
-      rq.tags.artist = args.artist_tag
-    else if args.album_tag
-      rq.tags.title = buildTitle args.album_tag
-      rq.tags.album = args.album_tag
-    
-    requester.send JSON.stringify(rq)
-    return
-  
-  copyFile = (i, alb, entry) ->
-    fs.copySync entry.src, entry.dst
-    setTags i, alb, entry
-    return
-
-  if args.reverse
-    i = 0; round = alb.belt.next()
-    while not round.done
-      copyFile alb.count - i, alb, round.value
-      i++; round = alb.belt.next()
-  else
-    i = 0; round = alb.belt.next()
-    while not round.done
-      copyFile i + 1, alb, round.value
-      i++; round = alb.belt.next()
-  return
+  requester.send '{"request": "serve"}'
+  return  
+  # if args.reverse
+  #   i = 0; round = alb.belt.next()
+  #   while not round.done
+  #     copyFile requester, alb.count - i, alb, round.value
+  #     i++; round = alb.belt.next()
+  # else
+  #   i = 0; round = alb.belt.next()
+  #   while not round.done
+  #     copyFile requester, i + 1, alb, round.value
+  #     i++; round = alb.belt.next()
+  # return
 
 
 copyAlbumOnce = do ->

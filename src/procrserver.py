@@ -42,6 +42,8 @@ try:
                 for tag, value in rq['tags'].items():
                     audio[tag] = value
                 audio.save()
+        elif rq['request'] == 'serve':
+            reply = '{"reply": "serve"}'
 
         #  Send reply back to client
         socket.send_string(reply)
