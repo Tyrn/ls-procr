@@ -327,6 +327,7 @@ startServer = ->
       if data.toString().trim() is 'running'
         tm.brightWhite "#{fCh.repeat 2} Server successfully started. Try again.\n"
         process.exit()
+      return
   
   srv.stderr.on 'data', (data) -> tm.brightWhite "#{fCh.repeat 2} stderr: #{data}\n"
 
@@ -337,6 +338,34 @@ startServer = ->
       else
         tm.brightWhite "#{fCh.repeat 2} Tag server error: #{code}\n"
       return
+  return
+
+
+receiveReply = do ->
+  tagCnt = 0
+  (reply, requester, alb) ->
+    rpl = JSON.parse reply
+    if rpl.reply is 'settags'
+      tagCnt++
+      if tagCnt < alb.count
+        track = strStripNumbers(rpl.tags.tracknumber)
+        tm.white "#{spacePad 5, track[0]}/#{track[1]} #{fCh} #{rpl.file}\n"
+      else
+        requester.close()
+        tm.brightWhite  "   #{fCh.repeat 2} #{tagCnt} file(s) copied " + 
+                        "and tagged #{fCh.repeat 2}\n"
+        process.exit 0
+    return
+
+
+startRequester = (alb) ->
+  requester = zmq.socket 'req'
+  requester.on "message",
+    (reply) ->
+      receiveReply(reply, requester, alb)
+      return
+  requester.connect "tcp://localhost:64107"
+  requester
 
 
 copyAlbum = ->
@@ -346,33 +375,17 @@ copyAlbum = ->
   tm.brightRed 'copyAlbum()\n'
   alb = buildAlbum()
 
-  requester = zmq.socket 'req'
-  check = 0
-  requester.on "message",
-    (reply) ->
-      rpl = JSON.parse(reply)
-      if rpl.reply is 'settags' then check++
-      if check < alb.count
-        track = strStripNumbers(rpl.tags.tracknumber)
-        tm.white "#{spacePad 5, track[0]}/#{track[1]} #{fCh} #{rpl.file}\n"
-      else
-        requester.close()
-        tm.brightWhite  "   #{fCh.repeat 2} #{check} file(s) copied " + 
-                        "and tagged #{fCh.repeat 2}\n"
-        process.exit 0
-
-      return
+  requester = startRequester(alb)
   
-  requester.connect "tcp://localhost:64107"
-  
-  setTags = (i, total, pth, title) ->
-    buildTitle = (s) -> if title then title else "#{i} #{s}"
+  setTags = (i, alb, entry) ->
+    buildTitle = (s) -> 
+      if args.file_title then sansExt path.basename entry.dst else "#{i} #{s}"
 
     rq = {}
     rq.request = 'settags'
-    rq.file = pth
+    rq.file = entry.dst
     rq.tags = {}
-    rq.tags.tracknumber = "#{i}/#{total}"
+    rq.tags.tracknumber = "#{i}/#{alb.count}"
     
     if args.artist_tag and args.album_tag
       rq.tags.title = buildTitle makeInitials(args.artist_tag) + ' - ' + args.album_tag
@@ -388,23 +401,21 @@ copyAlbum = ->
     requester.send JSON.stringify(rq)
     return
   
-  copyFile = (i, total, entry) ->
+  copyFile = (i, alb, entry) ->
     fs.copySync entry.src, entry.dst
-    setTags i, total, entry.dst, if args.file_title then sansExt path.basename entry.dst else null
+    setTags i, alb, entry
     return
 
   if args.reverse
-    `var i = 0;
-     for(round of alb.belt) {
-       copyFile(alb.count - i, alb.count, round);
-       i++;
-     }`
+    i = 0; round = alb.belt.next()
+    while not round.done
+      copyFile alb.count - i, alb, round.value
+      i++; round = alb.belt.next()
   else
-    `var i = 0;
-     for(round of alb.belt) {
-       copyFile(i + 1, alb.count, round);
-       i++;
-     }`
+    i = 0; round = alb.belt.next()
+    while not round.done
+      copyFile i + 1, alb, round.value
+      i++; round = alb.belt.next()
   return
 
 

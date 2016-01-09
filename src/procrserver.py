@@ -21,7 +21,9 @@ try:
     socket.bind("tcp://*:64107")
 except:
     sys.exit(0)
+
 print('running')
+
 try:
 
     while True:
