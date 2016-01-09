@@ -319,47 +319,66 @@ buildAlbum = ->
   {count: tot, belt: belt}
 
 
-startServer = ->
-  spawn = require('child_process').spawn
-  srv = spawn 'procrserver'
-  srv.stdout.on 'data',
-    (data) ->
-      if data.toString().trim() is 'running'
-        tm.brightWhite "#{fCh.repeat 2} Server successfully started. Try again.\n"
-        process.exit()
-      return
+copyFile = (i, alb, entry) ->
+  ###
+  Copies an album file to destination;
+  Builds and returns an object representing the request
+  to mutagen tag server (set tags to the file just copied).
+  ###
+  buildTitle = (s) -> 
+    if args.file_title then sansExt path.basename entry.dst else "#{i} #{s}"
   
-  srv.stderr.on 'data', (data) -> tm.brightWhite "#{fCh.repeat 2} stderr: #{data}\n"
+  fs.copySync entry.src, entry.dst
 
-  srv.on 'close',
-    (code) ->
-      if code is 0
-          copyAlbumOnce()
-      else
-        tm.brightWhite "#{fCh.repeat 2} Tag server error: #{code}\n"
-      return
-  return
+  rq = {}
+  rq.request = 'settags'
+  rq.file = entry.dst
+  rq.tags = {}
+  rq.tags.tracknumber = "#{i}/#{alb.count}"
+  
+  if args.artist_tag and args.album_tag
+    rq.tags.title = buildTitle makeInitials(args.artist_tag) + ' - ' + args.album_tag
+    rq.tags.artist = args.artist_tag
+    rq.tags.album = args.album_tag
+  else if args.artist_tag
+    rq.tags.title = buildTitle args.artist_tag
+    rq.tags.artist = args.artist_tag
+  else if args.album_tag
+    rq.tags.title = buildTitle args.album_tag
+    rq.tags.album = args.album_tag
+  rq
 
 
 fireRequest = (requester, i, alb) ->
+  ###
+  Fires request for the next album file to be tagged
+  ###
   round = alb.belt.next()
   if round.done
     tm.brightRed 'Out of ammo!\n'
   else
-    if args.reverse
-      copyFile requester, alb.count - i, alb, round.value
+    rq = if args.reverse
+      copyFile alb.count - i, alb, round.value
     else
-      copyFile requester, i + 1, alb, round.value
+      copyFile i + 1, alb, round.value
+    requester.send JSON.stringify rq
   return
 
 
 consumeReply = (rpl) ->
+  ###
+  Handles the Python mutagen server's reply by printing the output on one file
+  ###
   track = strStripNumbers(rpl.tags.tracknumber)
   tm.white "#{spacePad 5, track[0]}/#{track[1]} #{fCh} #{rpl.file}\n"
   return
 
 
-receiveReply = do ->
+handleReply = do ->
+  ###
+  Processes the Python mutagen tag server's reply about the file most recently
+  tagged and fires the request for the next file, if any
+  ###
   tagCnt = 0
   (reply, requester, alb) ->
     rpl = JSON.parse reply
@@ -380,73 +399,63 @@ receiveReply = do ->
 
 
 startRequester = (alb) ->
+  ###
+  Establishes connection to the Python mutagen tag server; gets ready
+  to process server replies
+  ###
   requester = zmq.socket 'req'
   requester.on "message",
     (reply) ->
-      receiveReply(reply, requester, alb)
+      handleReply(reply, requester, alb)
       return
   requester.connect "tcp://localhost:64107"
   requester
 
 
-setTags = (requester, i, alb, entry) ->
-  buildTitle = (s) -> 
-    if args.file_title then sansExt path.basename entry.dst else "#{i} #{s}"
-
-  rq = {}
-  rq.request = 'settags'
-  rq.file = entry.dst
-  rq.tags = {}
-  rq.tags.tracknumber = "#{i}/#{alb.count}"
-  
-  if args.artist_tag and args.album_tag
-    rq.tags.title = buildTitle makeInitials(args.artist_tag) + ' - ' + args.album_tag
-    rq.tags.artist = args.artist_tag
-    rq.tags.album = args.album_tag
-  else if args.artist_tag
-    rq.tags.title = buildTitle args.artist_tag
-    rq.tags.artist = args.artist_tag
-  else if args.album_tag
-    rq.tags.title = buildTitle args.album_tag
-    rq.tags.album = args.album_tag
-  
-  requester.send JSON.stringify(rq)
-  return
-
-
-copyFile = (requester, i, alb, entry) ->
-  fs.copySync entry.src, entry.dst
-  setTags requester, i, alb, entry
-  return
-
-
 copyAlbum = ->
   ###
-  Runs through the ammo belt and does copying, in the reverse order if necessary
+  Creates ammo belt generator and requests the service of Python mutagen tag server
   ###
   alb = buildAlbum()
   requester = startRequester(alb)
   requester.send '{"request": "serve"}'
   return  
-  # if args.reverse
-  #   i = 0; round = alb.belt.next()
-  #   while not round.done
-  #     copyFile requester, alb.count - i, alb, round.value
-  #     i++; round = alb.belt.next()
-  # else
-  #   i = 0; round = alb.belt.next()
-  #   while not round.done
-  #     copyFile requester, i + 1, alb, round.value
-  #     i++; round = alb.belt.next()
-  # return
 
 
 copyAlbumOnce = do ->
+  ###
+  Just a precaution against multiple calls to copyAlbum()
+  ###
   follower = -1
   ->
     follower++
     if not follower then copyAlbum()
     return
+
+
+startServer = ->
+  ###
+  Starts the Python mutagen tag server, if it is not already running
+  ###
+  spawn = require('child_process').spawn
+  srv = spawn 'procrserver'
+  srv.stdout.on 'data',
+    (data) ->
+      if data.toString().trim() is 'running'
+        # tm.brightWhite "#{fCh.repeat 2} Server successfully started.\n"
+        copyAlbumOnce()
+      return
+  
+  srv.stderr.on 'data', (data) -> tm.brightWhite "#{fCh.repeat 2} stderr: #{data}\n"
+
+  srv.on 'close',
+    (code) ->
+      if code is 0
+        copyAlbumOnce()
+      else
+        tm.brightWhite "#{fCh.repeat 2} Tag server error: #{code}\n"
+      return
+  return
 
 
 main = ->

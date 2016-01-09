@@ -32,7 +32,7 @@ try:
         jsn = message.decode('utf8')
         rq = json.loads(jsn)
 
-        reply = '{"request": "unknown"}'
+        reply = '{"reply": "unknown"}'
 
         if rq['request'] == 'settags':
             audio = mutagen.File(rq['file'], easy=True)
