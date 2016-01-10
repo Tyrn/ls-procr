@@ -34,6 +34,9 @@ lks = {
       }
 
 overWarn = do ->
+  ###
+  Delivers the warning once in a lifetime
+  ###
   flw = -1
   ->
     flw++
@@ -42,6 +45,8 @@ overWarn = do ->
     return
 
 
+# Overwrite warnings
+
 for k, v of lks
   link = path.join v.linkPath, v.linkName
   if sh.which(v.linkName) is link
@@ -49,6 +54,8 @@ for k, v of lks
     sh.exec "ls -l \"#{link}\""
 
 tm.brightWhite "\nThe following symlinks\n\n"
+
+# Symlinks to be created
 
 for k, v of lks
   tm.brightCyan path.join v.linkPath, v.linkName
@@ -64,8 +71,10 @@ tm.yesOrNo {yes: ['y', 'ENTER'], no: ['n']},
         tm.brightRed "Permission denied.\n"
         tm '\n'
         process.exit()
+
+      # Creating symlinks
       for k, v of lks
         sh.ln '-sf', v.target, path.join v.linkPath, v.linkName
-      process.exit()
-    else
-      process.exit()
+    
+    process.exit()
+    return
