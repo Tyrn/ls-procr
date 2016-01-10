@@ -16,9 +16,9 @@ import mutagen
 import json
 
 context = zmq.Context()
-socket = context.socket(zmq.REP)
+responder = context.socket(zmq.REP)
 try:
-    socket.bind("tcp://*:64107")
+    responder.bind("tcp://*:64107")
 except:
     sys.exit(0)
 
@@ -28,7 +28,7 @@ try:
 
     while True:
         #  Wait for next request from client
-        message = socket.recv()
+        message = responder.recv()
         jsn = message.decode('utf8')
         rq = json.loads(jsn)
 
@@ -46,7 +46,7 @@ try:
             reply = '{"reply": "serve"}'
 
         #  Send reply back to client
-        socket.send_string(reply)
+        responder.send_string(reply)
 
 except KeyboardInterrupt as e:
     sys.exit(e)
