@@ -19,7 +19,6 @@ args = do ->
     cmdName = 'pcf'
     parser = new ArgumentParser
       prog: cmdName
-      version: '0.0.1'
       addHelp: true
       description:
         [
@@ -34,6 +33,8 @@ args = do ->
           'or in the reversed order. This can be important for some mobile devices.'
         ].join ' '
 
+    parser.addArgument ['-v', '--verbose'],
+      {help: "verbose output", action: 'storeTrue'}
     parser.addArgument ['-f', '--file-title'],
       {help: "use file name for title tag", action: 'storeTrue'}
     parser.addArgument ['-x', '--sort-lex'],
@@ -65,6 +66,9 @@ args = do ->
 
     rg.src_dir = path.resolve rg.src_dir
     rg.dst_dir = path.resolve rg.dst_dir
+
+# Comment the following out if you prefer progress bar and -(-v)erbose option.
+    # rg.verbose = true
 
     if not fs.existsSync rg.src_dir
       tm.brightWhite "#{fCh.repeat 2} Source directory \"#{rg.src_dir}\" is not there.\n"
@@ -379,7 +383,8 @@ consumeReply = (rpl) ->
   Handles the Python mutagen server's reply by printing the output on one file
   ###
   track = strStripNumbers(rpl.tags.tracknumber)
-  tm.white "#{spacePad 5, track[0]}/#{track[1]} #{fCh} #{rpl.file}\n"
+  if args.verbose
+    tm.white "#{spacePad 5, track[0]}/#{track[1]} #{fCh} #{rpl.file}\n"
   return
 
 
@@ -389,15 +394,22 @@ handleReply = do ->
   tagged and fires the request for the next file, if any
   ###
   tagCnt = 0
+  if not args.verbose
+    progressBar = tm.progressBar {title: 'Copying:', percent: true}
+
   (reply, requester, alb) ->
     rpl = JSON.parse reply
     if rpl.reply is 'settags'
       tagCnt++
       if tagCnt < alb.count
         consumeReply rpl
+        if not args.verbose and tagCnt %% 3 is 0 then progressBar.update tagCnt / alb.count
         fireRequest requester, tagCnt, alb
       else
         consumeReply rpl
+        if not args.verbose
+          progressBar.update 1
+          tm '\n'
         requester.close()
         tm.brightWhite  "   #{fCh.repeat 2} #{tagCnt} file(s) copied " + 
                         "and tagged #{fCh.repeat 2}\n"
