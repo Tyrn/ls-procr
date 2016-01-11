@@ -69,7 +69,7 @@ tm.yesOrNo {yes: ['y', 'ENTER'], no: ['n']},
     if result
       if not isRoot()
         tm.brightRed "Permission denied.\n"
-        tm '\n'
+        tm.white '\n'
         process.exit()
 
       # Creating symlinks

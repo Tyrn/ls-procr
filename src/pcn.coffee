@@ -156,7 +156,7 @@ collectDirsAndFiles = (absPath, fileCondition) ->
   ###
   Returns a list of directories in absPath directory, and a list of files filtered by fileCondition
   ###
-  lst = fs.readdirSync(absPath).map((x) -> path.join absPath, x)
+  lst = fs.readdirSync(absPath).map (x) -> path.join absPath, x
   dirs = []; files = []
   for item in lst
     if fs.lstatSync(item).isDirectory()
@@ -182,8 +182,8 @@ comparePath = (xp, yp) ->
   ###
   Compares two paths, ignoring extensions
   ###
-  x = sansExt(xp)
-  y = sansExt(yp)
+  x = sansExt xp
+  y = sansExt yp
   if args.sort_lex then strcmp x, y else strcmpNaturally x, y
 
 
@@ -201,7 +201,7 @@ isAudioFile = (pth) ->
   Returns true, if pth is a recognized audio file
   ###
   if fs.lstatSync(pth).isDirectory() then return false
-  if ['.MP3', '.M4A', '.M4B', '.OGG', '.WMA'].indexOf(path.extname(pth).toUpperCase()) isnt -1 then return true
+  if ['.MP3', '.M4A', '.M4B', '.OGG', '.WMA', '.FLAC'].indexOf(path.extname(pth).toUpperCase()) isnt -1 then return true
   false
 
 
@@ -218,17 +218,17 @@ listDirGroom = (absPath, reverse) ->
   }
 
 
-zeroPad = (w, i) -> (['ZZZ', '0', '00', '000', '0000', '00000'][w] + i).slice(-w)
+zeroPad = (w, i) -> (['ZZZ', '0', '00', '000', '0000', '00000'][w] + i).slice -w
 
 
-spacePad = (w, i) -> (['ZZZ', ' ', '  ', '   ', '    ', '     '][w] + i).slice(-w)
+spacePad = (w, i) -> (['ZZZ', ' ', '  ', '   ', '    ', '     '][w] + i).slice -w
 
 
 decorateDirName = (i, name) -> zeroPad(3, i) + '-' + name
 
 
 decorateFileName = (cntw, i, name) ->
-  zeroPad(cntw, i) + '-' + if args.unified_name then args.unified_name + path.extname(name) else name
+  zeroPad(cntw, i) + '-' + if args.unified_name then args.unified_name + path.extname name else name
 
 
 traverseFlatDst = (srcDir, dstRoot, fcount, cntw) ->
@@ -406,7 +406,7 @@ startRequester = (alb) ->
   requester = zmq.socket 'req'
   requester.on "message",
     (reply) ->
-      handleReply(reply, requester, alb)
+      handleReply reply, requester, alb
       return
   requester.connect "tcp://localhost:64107"
   requester
@@ -417,7 +417,7 @@ copyAlbum = ->
   Creates ammo belt generator and requests the service of Python mutagen tag server
   ###
   alb = buildAlbum()
-  requester = startRequester(alb)
+  requester = startRequester alb
   requester.send '{"request": "serve"}'
   return  
 
