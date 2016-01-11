@@ -10,6 +10,9 @@ fs = require 'fs-extra'
 zmq = require 'zmq'
 tm = require('terminal-kit').terminal
 
+fCh = "\u27a4"
+
+
 args = do ->
   if require.main is module
     ArgumentParser = require('argparse').ArgumentParser
@@ -63,6 +66,14 @@ args = do ->
     rg.src_dir = path.resolve rg.src_dir
     rg.dst_dir = path.resolve rg.dst_dir
 
+    if not fs.existsSync rg.src_dir
+      tm.brightWhite "#{fCh.repeat 2} Source directory \"#{rg.src_dir}\" is not there.\n"
+      process.exit()
+
+    if not fs.existsSync rg.dst_dir
+      tm.brightWhite "#{fCh.repeat 2} Destination path \"#{rg.dst_dir}\" is not there.\n"
+      process.exit()
+
     if rg.tree_dst and rg.reverse
       tm.brightWhite "  *** -t option ignored (conflicts with -r) ***\n"
       rg.tree_dst = false
@@ -71,9 +82,6 @@ args = do ->
     rg
   else
     null
-
-
-fCh = "\u27a4"
 
 
 sansExt = (pth) ->
@@ -299,6 +307,7 @@ buildAlbum = ->
   srcName = path.basename args.src_dir
   prefix = if args.album_num then zeroPad(2, args.album_num) + '-' else ''
   baseDst = prefix + if args.unified_name then args.unified_name else srcName
+
   executiveDst = path.join args.dst_dir, if args.drop_dst then '' else baseDst
 
   if not args.drop_dst
