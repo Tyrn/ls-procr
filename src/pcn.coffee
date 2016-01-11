@@ -407,7 +407,7 @@ handleReply = do ->
     return
 
 
-startRequester = (alb) ->
+plugRequester = (alb) ->
   ###
   Establishes connection to the Python mutagen tag server; gets ready
   to process server replies
@@ -426,7 +426,7 @@ copyAlbum = ->
   Creates ammo belt generator and requests the service of Python mutagen tag server
   ###
   alb = buildAlbum()
-  requester = startRequester alb
+  requester = plugRequester alb
   requester.send '{"request": "serve"}'
   return  
 
