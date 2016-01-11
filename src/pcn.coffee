@@ -67,7 +67,7 @@ args = do ->
     rg.src_dir = path.resolve rg.src_dir
     rg.dst_dir = path.resolve rg.dst_dir
 
-# Comment the following out if you prefer progress bar and -(-v)erbose option.
+# Comment the following line out if you prefer progress bar and -(-v)erbose option.
     # rg.verbose = true
 
     if not fs.existsSync rg.src_dir
@@ -382,8 +382,8 @@ consumeReply = (rpl) ->
   ###
   Handles the Python mutagen server's reply by printing the output on one file
   ###
-  track = strStripNumbers(rpl.tags.tracknumber)
   if args.verbose
+    track = strStripNumbers(rpl.tags.tracknumber)
     tm.white "#{spacePad 5, track[0]}/#{track[1]} #{fCh} #{rpl.file}\n"
   return
 
