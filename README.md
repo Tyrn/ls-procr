@@ -63,7 +63,7 @@ album tag name
 Examples
 --------
 
-``Source Album $ pcp -a "Peter Crowcroft" -g "Mice All Over" . /run/media/user/F8950/Audiobooks/``
+``Source Album $ pcf -a "Peter Crowcroft" -g "Mice All Over" . /run/media/user/F8950/Audiobooks/``
 
 - Destination directory "/run/media/user/F8950/Audiobooks/Source Album/" is created;
 
