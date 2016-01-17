@@ -392,30 +392,33 @@ handleReply = do ->
   Processes the Python mutagen tag server's reply about the file most recently
   tagged and fires the request for the next file, if any
   ###
-  tagCnt = 0
-  if not args.verbose
-    tm.brightWhite 'Starting '
+  if require.main is module
+    tagCnt = 0
+    if not args.verbose
+      tm.brightWhite 'Starting '
 
-  (reply, requester, alb) ->
-    rpl = JSON.parse reply
-    if rpl.reply is 'settags'
-      tagCnt++
-      if tagCnt < alb.count
-        consumeReply rpl
-        fireRequest requester, tagCnt, alb
-      else
-        consumeReply rpl
-        if args.verbose
-          tm.brightWhite  "   #{fCh.repeat 2} #{tagCnt} file(s) copied " + 
-                          "and tagged #{fCh.repeat 2}\n"
+    (reply, requester, alb) ->
+      rpl = JSON.parse reply
+      if rpl.reply is 'settags'
+        tagCnt++
+        if tagCnt < alb.count
+          consumeReply rpl
+          fireRequest requester, tagCnt, alb
         else
-          tm.brightWhite " Done (#{tagCnt}).\n"
-        requester.close()
-        process.exit 0
-    else if rpl.reply is 'serve'
-      fireRequest requester, tagCnt, alb
-    return
-
+          consumeReply rpl
+          if args.verbose
+            tm.brightWhite  "   #{fCh.repeat 2} #{tagCnt} file(s) copied " + 
+                            "and tagged #{fCh.repeat 2}\n"
+          else
+            tm.brightWhite " Done (#{tagCnt}).\n"
+          requester.close()
+          process.exit 0
+      else if rpl.reply is 'serve'
+        fireRequest requester, tagCnt, alb
+      return
+  else
+    null
+    
 
 plugRequester = (alb) ->
   ###
