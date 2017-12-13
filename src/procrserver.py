@@ -6,7 +6,7 @@
 
 import sys
 
-if sys.version_info < (3, 4, 0):
+if sys.version_info < (3, 6, 0):
     sys.stderr.write("You need python 3.4 or later to run this script\n")
     sys.exit(1)
 
@@ -15,14 +15,16 @@ import zmq
 import mutagen
 import json
 
+port = "64107"
+
 context = zmq.Context()
 responder = context.socket(zmq.REP)
 try:
-    responder.bind("tcp://*:64107")
+    responder.bind(f"tcp://*:{port}")
 except:
     sys.exit(0)
 
-print('running')
+print(f'running on port {port}')
 
 try:
 
